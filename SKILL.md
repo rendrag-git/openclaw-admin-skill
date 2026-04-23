@@ -17,16 +17,21 @@ Operate, diagnose, configure, and fix OpenClaw installations. You have direct fi
 | **Agent workspaces** | `~/.openclaw/agents/<agentId>/` |
 | **Sessions** | `~/.openclaw/agents/<agentId>/sessions/` |
 | **Extensions** | `~/.openclaw/extensions/` (+ paths in `plugins.load.paths`) |
-| **Docs (~500 files)** | `~/.npm-global/lib/node_modules/openclaw/docs/` |
-| **Docs manifest** | `~/.npm-global/lib/node_modules/openclaw/docs/docs.json` |
-| **CLI binary** | `~/.npm-global/bin/openclaw` |
-| **Managed skills** | `~/.npm-global/lib/node_modules/openclaw/skills/` |
+| **Local docs (shipped subset)** | `<npm-prefix>/lib/node_modules/openclaw/docs/` — recent npm builds ship only a small `reference/` subset (templates, etc.), not the full docset. See "Finding the Right Doc" below. |
+| **CLI binary** | `<npm-prefix>/bin/openclaw` (find with `which openclaw`) |
+| **Managed skills** | `<npm-prefix>/lib/node_modules/openclaw/skills/` |
 | **Hooks** | `~/.openclaw/hooks/` |
 | **Custom scripts** | `~/.openclaw/bin/` |
 
 ## Diagnostic Ladder
 
-Run these in order when something is broken:
+Always start by checking the installed version so you know which docs/behavior apply:
+
+```bash
+openclaw --version                 # record this — docs and flags drift between builds
+```
+
+Then run these in order when something is broken:
 
 ```bash
 openclaw status                    # channel health + recent errors
@@ -58,8 +63,30 @@ openclaw logs --follow                     # then reproduce the issue
 
 ## Finding the Right Doc
 
-The docs directory has ~500 markdown files with consistent frontmatter:
+**First, always check the version** so you read docs that match the installed build:
+```bash
+openclaw --version
+```
 
+Recent npm builds do NOT ship the full docset locally — only a small `reference/` subset (templates, etc.) under `<npm-prefix>/lib/node_modules/openclaw/docs/`. For anything beyond templates, use one of these three sources (in order of convenience):
+
+1. **Online docs** — https://docs.openclaw.ai/
+   Fastest lookup. Rendered, searchable. Use WebFetch when you need a specific page.
+
+2. **Full source docs on GitHub** — https://github.com/openclaw/openclaw/tree/main/docs
+   Authoritative source. Browse the tree or fetch raw markdown via WebFetch, e.g.:
+   `https://raw.githubusercontent.com/openclaw/openclaw/main/docs/<path>.md`
+   Cross-check the tag/commit against `openclaw --version` if behavior seems off.
+
+3. **Offline / full local copy** — clone the repo when you need grep-able full docs:
+   ```bash
+   git clone https://github.com/openclaw/openclaw.git ~/src/openclaw
+   # then grep the local tree:
+   grep -rl "your search term" ~/src/openclaw/docs/ --include="*.md"
+   ```
+   Pull/refresh before relying on it; check out the tag matching your installed version if you need an exact match.
+
+Docs use consistent frontmatter — search the `read_when` and `summary` fields to find the right page:
 ```yaml
 ---
 summary: "One-line description"
@@ -69,12 +96,7 @@ title: "Page Title"
 ---
 ```
 
-**To find docs for a problem**, grep the `read_when` and `summary` fields:
-```bash
-grep -rl "your search term" ~/.npm-global/lib/node_modules/openclaw/docs/ --include="*.md"
-```
-
-**Key doc directories:**
+**Key doc directories (in the online/GitHub/cloned tree):**
 - `cli/` — command reference (one file per command)
 - `gateway/` — config reference, troubleshooting, security
 - `channels/` — per-platform setup guides
