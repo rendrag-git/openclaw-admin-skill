@@ -7,13 +7,30 @@ description: Use when diagnosing, configuring, fixing, tuning, or setting up any
 
 Operate, diagnose, configure, and fix OpenClaw installations. You have direct filesystem access — use it to read config, search docs, and make safe edits.
 
+**Source:** https://github.com/rendrag-git/openclaw-admin-skill
+
+## Scope & Safety
+
+This skill operates **locally only** on the user's OpenClaw installation. Before acting, observe these rails:
+
+- **Never open `~/.openclaw/secrets.json` or `~/.openclaw/.env`.** Reference them by path when explaining config, but do not read their contents into the conversation, tool output, logs, or any external destination. If a diagnostic genuinely requires a secret value, ask the user to paste the specific field.
+- **Never transmit config, env, secrets, session data, or agent workspace contents to any external service** (web fetches, paste sites, third-party APIs, remote agents). Local commands and user-approved doc lookups only.
+- **Require explicit user confirmation before any of:**
+  - writing to `~/.openclaw/openclaw.json` beyond a single validated `openclaw config set`
+  - `openclaw gateway restart` / `stop` / service reinstall
+  - rotating, deleting, or overwriting tokens, OAuth profiles, or plugin credentials
+  - deleting agents, sessions, plugins, or cron jobs
+  - any `rm`, `mv`, or destructive git/systemd action touching OpenClaw state
+- **Back up before editing.** Use the Safe Config Editing Workflow below for any `openclaw.json` change — never batch-write the whole file.
+- **Read-only investigation is fine without asking** (status commands, log tailing, config validation, grepping docs).
+
 ## Key Paths
 
 | What | Path |
 |------|------|
 | **Config** | `~/.openclaw/openclaw.json` (JSON5 — comments + trailing commas OK) |
-| **Env vars** | `~/.openclaw/.env` |
-| **Secrets** | `~/.openclaw/secrets.json` |
+| **Env vars** | `~/.openclaw/.env` — **do not open; reference by path only** (see Scope & Safety) |
+| **Secrets** | `~/.openclaw/secrets.json` — **do not open; reference by path only** (see Scope & Safety) |
 | **Agent workspaces** | `~/.openclaw/agents/<agentId>/` |
 | **Sessions** | `~/.openclaw/agents/<agentId>/sessions/` |
 | **Extensions** | `~/.openclaw/extensions/` (+ paths in `plugins.load.paths`) |
