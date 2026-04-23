@@ -23,6 +23,7 @@ This skill operates **locally only** on the user's OpenClaw installation. Before
   - any `rm`, `mv`, or destructive git/systemd action touching OpenClaw state
 - **Back up before editing.** Use the Safe Config Editing Workflow below for any `openclaw.json` change — never batch-write the whole file.
 - **Read-only investigation is fine without asking** (status commands, log tailing, config validation, grepping docs).
+- **Agent sessions and workspaces may contain user conversations, prompts, and PII.** Listing them (names, timestamps, sizes, file paths) is fine without asking. Before reading the *contents* of any file under `~/.openclaw/agents/<id>/sessions/` or an agent workspace, ask the user first — explain what you're looking for and why so they can approve, narrow the scope, or point you at the right session (they may not know which one without your help). Never quote or summarize session bodies in external fetches, cross-agent messages, or any destination outside this conversation, even after approval.
 
 ## Key Paths
 
