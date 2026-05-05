@@ -8,10 +8,12 @@ All commands support `--help` for full flags and options. Global flags: `--dev` 
 |---------|-------------|
 | `openclaw status` | Channel health, recent recipients, error summary |
 | `openclaw status --all` | Full status report |
+| `openclaw status --deep` | Extended runtime status used for update/post-update audits |
 | `openclaw health` | Fetch health from running gateway |
 | `openclaw doctor` | Config validation + guided repairs |
 | `openclaw doctor --fix` | Auto-repair safe issues (writes .bak backup) |
 | `openclaw doctor --deep` | Live gateway probe + extended checks |
+| `openclaw doctor --non-interactive --no-workspace-suggestions` | Script-friendly doctor run for update verification |
 | `openclaw logs` | Tail gateway file logs |
 | `openclaw logs --follow` | Stream logs in real-time |
 | `openclaw channels status --probe` | Per-channel connection check |
@@ -90,6 +92,22 @@ Legacy aliases: `openclaw daemon` (alias for gateway commands), `openclaw clawbo
 | `openclaw cron status` | Scheduler state |
 | `openclaw webhooks list` | List webhook endpoints |
 
+## Plugins
+
+| Command | What it does |
+|---------|-------------|
+| `openclaw plugins list` | List installed plugins/extensions |
+| `openclaw plugins list --json` | Machine-readable plugin inventory |
+| `openclaw plugins doctor` | Plugin registry, load, compatibility, and duplicate checks |
+| `openclaw plugins inspect <id>` | Show plugin source path, origin, version, slots, and warnings |
+| `openclaw plugins registry --refresh` | Refresh plugin registry/compatibility metadata |
+| `openclaw plugins install <pkg>` | Install a plugin package |
+| `openclaw plugins update <id>` | Update a single plugin |
+| `openclaw plugins update --all` | Update all plugins (verify install records first) |
+| `openclaw plugins enable <id>` | Enable a configured plugin |
+| `openclaw plugins disable <id>` | Disable a plugin |
+| `openclaw plugins uninstall <id>` | Remove plugin install/config traces (destructive; use with care) |
+
 ## Security & Maintenance
 
 | Command | What it does |
@@ -130,6 +148,8 @@ Legacy aliases: `openclaw daemon` (alias for gateway commands), `openclaw clawbo
 |---------|-------------|
 | `openclaw hooks` | Manage internal agent hooks |
 | `openclaw secrets` | Secrets runtime reload controls |
+| `openclaw secrets audit` | Check SecretRef resolution without printing secret values |
+| `openclaw secrets reload` | Ask the gateway to reload secrets at runtime |
 
 ## Development & Debug
 
@@ -141,6 +161,10 @@ Legacy aliases: `openclaw daemon` (alias for gateway commands), `openclaw clawbo
 | `openclaw qa` | QA scenarios and debugger UI |
 | `openclaw system` | System events, heartbeat, presence |
 | `openclaw tasks` | Inspect durable background task state |
+| `openclaw tasks audit` | Audit task ledger health after update/restart |
+| `openclaw tasks show <id>` | Inspect a task/run record |
+| `openclaw tasks cancel <id>` | Cancel a task/run when it is understood to be stale or wrong |
+| `openclaw tasks maintenance` | Task ledger maintenance helpers |
 | `openclaw tui` | Terminal UI connected to gateway |
 | `openclaw webhooks` | Webhook helpers and integrations |
 
@@ -152,7 +176,6 @@ Legacy aliases: `openclaw daemon` (alias for gateway commands), `openclaw clawbo
 | `openclaw dashboard` | Open Control UI |
 | `openclaw memory search <query>` | Search agent memory files |
 | `openclaw memory reindex` | Rebuild memory search index |
-| `openclaw plugins list` | List installed plugins/extensions |
 | `openclaw browser status` | Browser tool status |
 | `openclaw sandbox status` | Sandbox container state |
 | `openclaw pairing list` | List pending/approved DM pairings |

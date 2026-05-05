@@ -1,6 +1,6 @@
 ---
 name: openclaw-admin
-description: Use when diagnosing, configuring, fixing, tuning, or setting up anything in OpenClaw — gateway not responding, channel silent, model failover issues, auth errors, agent routing problems, config validation failures, or any operational task involving openclaw.json, the gateway, agents, channels, or the openclaw CLI.
+description: Use when installing, updating, diagnosing, configuring, fixing, tuning, or setting up anything in OpenClaw — gateway not responding, channel silent, model failover issues, auth errors, agent routing problems, config validation failures, plugin drift after update, or any operational task involving openclaw.json, the gateway, agents, channels, or the openclaw CLI.
 ---
 
 # OpenClaw Admin
@@ -8,6 +8,16 @@ description: Use when diagnosing, configuring, fixing, tuning, or setting up any
 Operate, diagnose, configure, and fix OpenClaw installations. You have direct filesystem access — use it to read config, search docs, and make safe edits.
 
 **Source:** https://github.com/rendrag-git/openclaw-admin-skill
+
+## Local Install Profile
+
+Before non-trivial OpenClaw work, read `local-install.md` in this skill directory. That file is the only intended local customization point for host-specific install facts.
+
+- If `local-install.md` is missing or still says `Status: uninitialized template`, build it first from read-only discovery commands.
+- If live discovery disagrees with `local-install.md`, treat the file as stale, verify current state, and update it with non-secret facts before relying on it.
+- Update `local-install.md` whenever the user changes install type, host, profile, service manager, config path, gateway port, package source, plugin roots, rescue gateway, or secondary instance layout.
+- Keep `SKILL.md` generic. Do not add user-specific hostnames, ports, profiles, or service names here.
+- Never record secrets, tokens, env-file contents, session bodies, agent workspace contents, or private conversation text in `local-install.md`.
 
 ## Scope & Safety
 
@@ -26,6 +36,8 @@ This skill operates **locally only** on the user's OpenClaw installation. Before
 - **Agent sessions and workspaces may contain user conversations, prompts, and PII.** Listing them (names, timestamps, sizes, file paths) is fine without asking. Before reading the *contents* of any file under `~/.openclaw/agents/<id>/sessions/` or an agent workspace, ask the user first — explain what you're looking for and why so they can approve, narrow the scope, or point you at the right session (they may not know which one without your help). Never quote or summarize session bodies in external fetches, cross-agent messages, or any destination outside this conversation, even after approval.
 
 ## Key Paths
+
+These are generic defaults. Prefer `local-install.md` when it has been initialized and verified for the current host.
 
 | What | Path |
 |------|------|
@@ -66,6 +78,89 @@ openclaw channels status --probe   # per-channel connection check
 openclaw config set logging.level debug   # or trace for maximum detail
 openclaw logs --follow                     # then reproduce the issue
 ```
+
+## Install / Update Runbook
+
+Use this path when OpenClaw is being installed, updated, or acting strange after an update. The reusable rule is to prove which layer is broken before changing state.
+
+### 1. Identify the install shape
+
+Do not assume the service manager or package layout. First determine:
+
+- Whether `local-install.md` already captures the current install shape
+- Host type: local machine, VPS, Docker/container, LXC/Incus, system package, or manual process
+- Install type: npm global, Homebrew/package manager, source checkout, release-managed symlink, container image, or bundled app
+- Service manager: systemd, launchd, Docker/Compose, supervisor, tmux/screen, cron/autopilot, or unmanaged foreground process
+- Active config/profile: default profile, named profile, user-specific home, container home, or service account home
+
+Useful read-only probes:
+
+```bash
+which openclaw
+openclaw --version
+openclaw config file
+openclaw gateway status
+openclaw status --deep
+```
+
+### 2. Verify service reality from multiple angles
+
+Do not trust only one signal. Compare the service manager, live process, listening port, health endpoint, and logs. Common post-update failures include a service unit that exists but is not loaded, a detached old process still serving traffic, and a restarted service reading a different environment than the shell.
+
+Use whichever checks match the install:
+
+```bash
+openclaw gateway status
+openclaw health
+openclaw logs
+ps -ef | rg openclaw
+ss -ltnp | rg '18789|19001|openclaw'
+```
+
+For systemd, launchd, Docker, or container-managed installs, inspect the native manager state as well. Keep commands read-only until you know which process is actually serving the gateway.
+
+### 3. Snapshot package, plugin, config, and runtime health
+
+Before fixing, capture the real current state:
+
+```bash
+openclaw --version
+openclaw doctor --non-interactive --no-workspace-suggestions
+openclaw plugins doctor
+openclaw plugins list --json
+openclaw channels status --deep
+openclaw tasks audit
+```
+
+Then inspect recent startup logs for plugin load failures, config validation errors, channel auth failures, context-engine fallback, active-memory timeouts, event-loop degradation, and task restart blocking.
+
+### 4. Reconcile drift before reinstalling broadly
+
+Post-update breakage often comes from inconsistent state rather than a bad binary:
+
+- Host package version and plugin package versions are on different cohorts
+- A bundled plugin is shadowed by an older global/npm plugin
+- Plugin install records point at missing or older on-disk packages
+- Config still names removed provider/plugin IDs or legacy keys
+- A service env file changed while the interactive shell env did not
+- Task ledger corruption makes a healthy gateway look degraded
+
+Prefer the smallest consistency fix: refresh the plugin registry, update one stale plugin, correct one stale config key, or repair one task ledger issue. Avoid `plugins update --all`, plugin uninstall/reinstall, or broad config rewrites until install records, loaded plugin paths, and config intent are understood.
+
+### 5. Verify after each narrow fix
+
+After an update or repair, "gateway is running" is not enough. Re-run the relevant checks:
+
+```bash
+openclaw --version
+openclaw doctor --non-interactive --no-workspace-suggestions
+openclaw plugins doctor
+openclaw status --deep
+openclaw channels status --deep
+openclaw tasks audit
+```
+
+When symptoms match known update regressions, read `update-failure-patterns.md` in this skill directory for concrete inspection and recovery patterns.
 
 ## Safe Config Editing Workflow
 
@@ -254,3 +349,5 @@ openclaw --profile rescue cron list       # health check + backup jobs
 
 For CLI command lookup, read `cli-reference.md` in this skill directory.
 For config key details and restart requirements, read `config-map.md` in this skill directory.
+For local install facts and service-manager commands, read `local-install.md` in this skill directory.
+For install/update regression examples, read `update-failure-patterns.md` in this skill directory.

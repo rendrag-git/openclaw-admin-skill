@@ -58,7 +58,8 @@ These changes require `openclaw gateway restart` to take effect.
 | `gateway.http` | HTTP server config, OpenAI-compatible endpoints (chatCompletions, responses) |
 | `gateway.reload` | Hot-reload mode itself (hybrid/hot/restart/off) |
 | `discovery` | mDNS advertising, health endpoints |
-| `plugins` | Extension loading, slots (memory/contextEngine), per-plugin config, deny list, install metadata |
+| `plugins` | Extension loading, slots (memory/contextEngine), per-plugin config, allow/deny lists, bundled provider discovery, install metadata |
+| `plugins.bundledDiscovery` | Whether bundled provider plugins use legacy compatibility discovery or obey `plugins.allow` |
 | `gateway.controlUi` | Control UI (enabled, basePath, allowedOrigins, auth) |
 | `gateway.remote` | Remote gateway connection (url, transport, token) |
 | `gateway.push` | APNs push notification relay |
