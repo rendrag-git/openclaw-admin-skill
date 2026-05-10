@@ -16,6 +16,7 @@ Before non-trivial OpenClaw work, read `local-install.md` in this skill director
 - If `local-install.md` is missing or still says `Status: uninitialized template`, build it first from read-only discovery commands.
 - If live discovery disagrees with `local-install.md`, treat the file as stale, verify current state, and update it with non-secret facts before relying on it.
 - Update `local-install.md` whenever the user changes install type, host, profile, service manager, config path, gateway port, package source, plugin roots, rescue gateway, or secondary instance layout.
+- Update `local-install.md` whenever the OpenClaw version changes; package installs refresh the bundled docs snapshot, and refreshing the live docs cache is useful when you want current published docs indexed locally.
 - Keep `SKILL.md` generic. Do not add user-specific hostnames, ports, profiles, or service names here.
 - Never record secrets, tokens, env-file contents, session bodies, agent workspace contents, or private conversation text in `local-install.md`.
 
@@ -47,7 +48,8 @@ These are generic defaults. Prefer `local-install.md` when it has been initializ
 | **Agent workspaces** | `~/.openclaw/agents/<agentId>/` |
 | **Sessions** | `~/.openclaw/agents/<agentId>/sessions/` |
 | **Extensions** | `~/.openclaw/extensions/` (+ paths in `plugins.load.paths`) |
-| **Local docs (shipped subset)** | `<npm-prefix>/lib/node_modules/openclaw/docs/` — recent npm builds ship only a small `reference/` subset (templates, etc.), not the full docset. See "Finding the Right Doc" below. |
+| **Local docs (package snapshot)** | `<npm-prefix>/lib/node_modules/openclaw/docs/` — package install/update refreshes this bundled docs snapshot. It is broad but may omit generated/published artifacts such as API specs. |
+| **Docs cache (downloaded)** | Recommended optional live published-docs cache. Default: `${XDG_CACHE_HOME:-~/.cache}/openclaw-admin/openclaw-docs/current/`, populated from `https://docs.openclaw.ai/llms.txt`. |
 | **CLI binary** | `<npm-prefix>/bin/openclaw` (find with `which openclaw`) |
 | **Managed skills** | `<npm-prefix>/lib/node_modules/openclaw/skills/` |
 | **Hooks** | `~/.openclaw/hooks/` |
@@ -119,7 +121,39 @@ ss -ltnp | rg '18789|19001|openclaw'
 
 For systemd, launchd, Docker, or container-managed installs, inspect the native manager state as well. Keep commands read-only until you know which process is actually serving the gateway.
 
-### 3. Snapshot package, plugin, config, and runtime health
+### 3. Verify docs sources
+
+OpenClaw package installs include a bundled docs snapshot under the package root. Package update refreshes that directory as part of replacing the package; do not store manual edits there because update can replace them.
+
+After install/update, record the shipped docs path and version in `local-install.md`:
+
+```bash
+openclaw --version
+npm root -g
+find "$(npm root -g)/openclaw/docs" -maxdepth 2 -type f | sed -n '1,40p'
+```
+
+Refresh the live docs cache when you want current published docs, generated artifacts missing from npm, or an offline grep-able copy of `https://docs.openclaw.ai/llms.txt`. It is not required for routine installed-version lookup, but it is a useful companion after each OpenClaw version update:
+
+```bash
+./scripts/refresh-openclaw-docs.sh
+```
+
+If the script is not available in the installed skill copy, do the minimum safe manual refresh:
+
+```bash
+DOCS_CACHE="${OPENCLAW_DOCS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/openclaw-admin/openclaw-docs}"
+OC_VERSION="$(openclaw --version | awk '{print $NF}')"
+mkdir -p "$DOCS_CACHE/$OC_VERSION"
+curl -fsSL https://docs.openclaw.ai/llms.txt -o "$DOCS_CACHE/$OC_VERSION/llms.txt"
+if [ ! -e "$DOCS_CACHE/current" ] || [ -L "$DOCS_CACHE/current" ]; then
+  ln -sfn "$DOCS_CACHE/$OC_VERSION" "$DOCS_CACHE/current"
+fi
+```
+
+After a live-docs refresh, record the cache path, docs source URL, OpenClaw version, and verification command in `local-install.md`. If the network is unavailable, say the live docs cache is stale or missing and use the package docs with that caveat.
+
+### 4. Snapshot package, plugin, config, and runtime health
 
 Before fixing, capture the real current state:
 
@@ -134,7 +168,7 @@ openclaw tasks audit
 
 Then inspect recent startup logs for plugin load failures, config validation errors, channel auth failures, context-engine fallback, active-memory timeouts, event-loop degradation, and task restart blocking.
 
-### 4. Reconcile drift before reinstalling broadly
+### 5. Reconcile drift before reinstalling broadly
 
 Post-update breakage often comes from inconsistent state rather than a bad binary:
 
@@ -147,7 +181,7 @@ Post-update breakage often comes from inconsistent state rather than a bad binar
 
 Prefer the smallest consistency fix: refresh the plugin registry, update one stale plugin, correct one stale config key, or repair one task ledger issue. Avoid `plugins update --all`, plugin uninstall/reinstall, or broad config rewrites until install records, loaded plugin paths, and config intent are understood.
 
-### 5. Verify after each narrow fix
+### 6. Verify after each narrow fix
 
 After an update or repair, "gateway is running" is not enough. Re-run the relevant checks:
 
@@ -181,17 +215,30 @@ When symptoms match known update regressions, read `update-failure-patterns.md` 
 openclaw --version
 ```
 
-Recent npm builds do NOT ship the full docset locally — only a small `reference/` subset (templates, etc.) under `<npm-prefix>/lib/node_modules/openclaw/docs/`. For anything beyond templates, use one of these three sources (in order of convenience):
+Package installs include a broad local docs snapshot under `<npm-prefix>/lib/node_modules/openclaw/docs/`. Install and update refresh that snapshot with the installed package. Some generated or published artifacts, such as API specs, may be absent. Use these sources in order:
 
-1. **Online docs** — https://docs.openclaw.ai/
-   Fastest lookup. Rendered, searchable. Use WebFetch when you need a specific page.
+1. **Local package docs** — `<npm-prefix>/lib/node_modules/openclaw/docs/`
+   Best first stop for installed-version docs. Search directly:
+   ```bash
+   rg -n "gateway|discord|plugins|your search term" "$(npm root -g)/openclaw/docs"
+   ```
 
-2. **Full source docs on GitHub** — https://github.com/openclaw/openclaw/tree/main/docs
+2. **Downloaded live docs cache** — `${OPENCLAW_DOCS_CACHE:-${XDG_CACHE_HOME:-$HOME/.cache}/openclaw-admin/openclaw-docs}/current/`
+   Use this for fast local search across current published docs, when local package docs are missing the page, or when generated artifacts are needed. Refresh it before relying on it if the cache is missing or stale:
+   ```bash
+   rg -n "gateway|discord|plugins|your search term" "$HOME/.cache/openclaw-admin/openclaw-docs/current"
+   ```
+   The cache is built from `https://docs.openclaw.ai/llms.txt`, which lists the current published Markdown and API docs.
+
+3. **Online docs** — https://docs.openclaw.ai/
+   Fastest live lookup. Rendered, searchable. Use WebFetch when you need a specific page and local cache is absent or stale.
+
+4. **Full source docs on GitHub** — https://github.com/openclaw/openclaw/tree/main/docs
    Authoritative source. Browse the tree or fetch raw markdown via WebFetch, e.g.:
    `https://raw.githubusercontent.com/openclaw/openclaw/main/docs/<path>.md`
    Cross-check the tag/commit against `openclaw --version` if behavior seems off.
 
-3. **Offline / full local copy** — clone the repo when you need grep-able full docs:
+5. **Offline source checkout** — clone the repo when you need git history or exact tags:
    ```bash
    git clone https://github.com/openclaw/openclaw.git ~/src/openclaw
    # then grep the local tree:

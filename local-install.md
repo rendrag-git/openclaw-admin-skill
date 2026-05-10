@@ -15,7 +15,8 @@ Before publishing, sharing, or upstreaming a skill bundle, reset this file to th
 2. If `Status` is `uninitialized template`, missing, or obviously stale, build or refresh it from read-only discovery commands before making operational decisions.
 3. If discovery shows a different install shape than this file records, pause before writes/restarts and update this file with the new non-secret facts.
 4. After any install migration, service-manager change, profile move, package-source change, or port/config path change, update this file in the same turn.
-5. Treat this file as operator memory, not as proof of current state. Verify live state before claiming health or applying fixes.
+5. After each OpenClaw version update, re-check the package docs path. Refresh the live docs cache from `https://docs.openclaw.ai/llms.txt` when current published docs, local search, or generated artifacts would help.
+6. Treat this file as operator memory, not as proof of current state. Verify live state before claiming health or applying fixes.
 
 ## First-Run Build Checklist
 
@@ -55,6 +56,7 @@ Refresh this file when any of these changes:
 - The service manager changes, such as foreground process to systemd, launchd, Docker/Compose, supervisor, tmux, cron/autopilot, or container service.
 - Plugin roots, bundled/external plugin strategy, or update channel changes.
 - A rescue gateway, secondary profile, or additional OpenClaw instance is added or removed.
+- The OpenClaw version changes, because package docs and any live docs cache may now point at different content.
 
 ## Install Summary
 
@@ -79,7 +81,12 @@ Replace the template values below on first run.
 | State directory | unknown |
 | Gateway bind/port | unknown |
 | Health endpoint | unknown |
-| Local docs path | unknown |
+| Local shipped docs path | unknown |
+| Local shipped docs file count | unknown |
+| Downloaded docs cache path | unknown |
+| Docs index source | https://docs.openclaw.ai/llms.txt |
+| Docs cache OpenClaw version | unknown |
+| Docs cache last refreshed | unknown |
 | Managed skills path | unknown |
 | Plugin roots | unknown |
 | Update channel | unknown |
