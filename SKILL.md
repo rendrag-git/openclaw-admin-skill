@@ -283,7 +283,17 @@ title: "Page Title"
 
 **Group mention gating**: Groups default to `requireMention: true`. Bot won't respond unless @-mentioned or text matches `mentionPatterns`.
 
-**Bot token contention**: Two gateways sharing the same Discord bot token cause WebSocket reconnect storms — Discord terminates the first connection when a second gateway connects with the same token. Each gateway (main, rescue, etc.) MUST use a unique bot token.
+**Bot token contention (gateway-WS layer, not channel/guild)**: A single Discord bot token can serve any number of guilds and channels over one gateway WebSocket — that part is fine. The contention is at the `wss://gateway.discord.gg/...` connection: Discord allows exactly one active non-sharded `IDENTIFY` per token. If two processes (main + rescue, main + an EC2 failover, two `openclaw` services on the same host, etc.) each open a gateway WS with the same token, Discord drops whichever is older every time the other re-IDENTIFIEs — producing a reconnect storm.
+
+Symptoms in pmg-side logs:
+- `discord client initialized as <botUserId>; awaiting gateway readiness` repeated for the same bot ID mid-session (not just at startup)
+- `discord: gateway READY wait timed out after 15000ms; reconnecting with backoff (attempt N)`
+- Mixed close codes piling up: `closed: 1006` (TCP drop), `closed: 1000` (lib close), `closed: 4000` (carbon "tick timeout" — heartbeat watchdog) — hundreds per day per bot under contention
+- Each agent reply that needs that bot stalls ~15–30s waiting for the new WS to reach READY
+
+Real-world example: `openclaw-failover-backup` ASG (cold-standby EC2 in us-east-1) launched on a heartbeat-stale alarm during a home-box BIOS update, pulled the same SSM-stored Discord bot tokens as the home gateway, and stayed up because `Failback=manual`. 21 hours of contention until the ASG was scaled to 0.
+
+Fix: either ensure only one process holds a given token's gateway WS at a time (clean Failback that revokes/swaps tokens on cutover), or shard the connection deliberately (`shard:[id,total]` in IDENTIFY) — but `@buape/carbon` doesn't expose sharding currently, so distinct tokens per gateway is the practical answer. To check from AWS: `aws autoscaling describe-auto-scaling-groups` for any `*failover*` group with `DesiredCapacity>0`, and read the launch template userdata for `DISCORD_*_TOKEN` SSM param names.
 
 **Same-bot inter-agent messaging**: The bot ignores its own messages. Agents sharing one bot token can't trigger each other — Agent A's message appears as the bot, so Agent B's binding skips it. Fix: use multiple bot accounts so inter-agent messages appear as cross-bot communication.
 
